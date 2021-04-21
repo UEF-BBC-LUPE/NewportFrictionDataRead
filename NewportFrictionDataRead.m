@@ -12,33 +12,22 @@ visc=0.89*1e-3; % water viscosity
 for II=1:length(list1)
 %     measurement(II)=importdata([path filesep list1(II).name]);
 filename=list1(II).name;
-
-%We need to take into account if Newport does not print text in the beginning of the data file
-measurement_check = importdata(filename); %Importing temporarily
-% -----------------------------------------------------------------------------------------------    
-if isstruct( measurement_check ) %Does it contain text
-    %If
-    measurement(II)=importdata(filename); 
-else %If not
-    measurement(II).textdata = measurement_check;
-end
-clear measurement_check %Clearing the temporary file
-% -----------------------------------------------------------------------------------------------
+measurement(II)=importdata(filename);
     
     % measurement(II).textdata contains the GUI parameters (first row of
     % .txt file
     % initial z-velocity, adjustment velocity, speed decr rate,data read
-    % interval (ms), target force, limit + (upper), limit � (lower), nmb of steps
+    % interval (ms), target force, limit + (upper), limit  (lower), nmb of steps
     % step time (s), lift off (um), lift off period (s), sample rate (Hz),
     % file write averaging, sample averaging, ADC maximum value, ADC min value
 % variables in the measuremnt(II).data:
-% time program; time step; force; torque; position �m; rotation speed rps;
+% time program; time step; force; torque; position µm; rotation speed rps;
 % adjustment velocity mm/s 
 end
 
 %%
 close all
-tt=[-5 360]; %Determines the figure limits
+tt=[-5 360];
 for ii=1:length(list1)
     % Read measurement
 %     parameters from text file
@@ -53,7 +42,7 @@ for ii=1:length(list1)
     Force=Force-Force(1,1); % zero the force
     torque=measurement(ii).data(:,4); % torque Nm
     torque=torque-torque(1,1); % zero the torque 
-    position=measurement(ii).data(:,5); % position in �m
+    position=measurement(ii).data(:,5); % position in µm
     v=measurement(ii).data(:,6); % rotation velocity rot/s
     vcomp=measurement(ii).data(:,7); % compression velocity mm/s 
     
