@@ -12,7 +12,18 @@ visc=0.89*1e-3; % water viscosity
 for II=1:length(list1)
 %     measurement(II)=importdata([path filesep list1(II).name]);
 filename=list1(II).name;
-measurement(II)=importdata(filename);
+
+%We need to take into account if Newport does not print text in the beginning of the data file
+measurement_check = importdata(filename); %Importing temporarily
+% -----------------------------------------------------------------------------------------------    
+if isstruct( measurement_check ) %Does it contain text
+    %If
+    measurement(II)=importdata(filename); 
+else %If not
+    measurement(II).textdata = measurement_check;
+end
+clear measurement_check %Clearing the temporary file
+% -----------------------------------------------------------------------------------------------
     
     % measurement(II).textdata contains the GUI parameters (first row of
     % .txt file
@@ -27,7 +38,7 @@ end
 
 %%
 close all
-tt=[-5 360];
+tt=[-5 360]; %Determines the figure limits
 for ii=1:length(list1)
     % Read measurement
 %     parameters from text file
