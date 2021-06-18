@@ -27,11 +27,12 @@ end
 
 %%
 close all
-tt=[-5 360];
+% tt=[-5 360];
 for ii=1:length(list1)
     % Read measurement
 %     parameters from text file
-    GUI=str2num(cell2mat(measurement(ii).textdata)); 
+    GUI=str2num(cell2mat(measurement(ii).textdata));
+    tt=[-5 GUI(8)*GUI(9)+10];
     F_trgt=GUI(5);
     init_vel=GUI(1); % initial velocity before contact
     adj_vel=GUI(2); % adjustment velocity during creep
@@ -46,75 +47,133 @@ for ii=1:length(list1)
     v=measurement(ii).data(:,6); % rotation velocity rot/s
     vcomp=measurement(ii).data(:,7); % compression velocity mm/s 
     
-    % Two ways to define the time points for analysis
+    
+    % Different ways to define the time points for analysis
     % 1) Find time points were we have contact based on compression velocity
 %     [idx1,idx2]=find(vcomp<init_vel);
 %     [idx1,idx2]=find(vcomp<0.5*init_vel);
 %     [idx1,idx2]=find(vcomp<5*adj_vel);
 %     [idx1,idx2]=find(vcomp<2*adj_vel);
+    % Adjust torque values if zero level is offset to negative axis
+    % In fluid the torque decreases until contact is reached,
+% minimum torque is reached in the initial contact
+    
+    torque_corr=min(torque(find(time<10))); 
+    torque=torque-torque_corr;
+    
+    % Apply bandstop filter to filter oscillation due to rotaton from data
+    wp=1;
+    wpass=[0.05*wp 0.9*wp];
+    ws = 100; 
+    b = (1/ws)*ones(1,ws); % Numerator coefficients
+    a = 1; % Denominator coefficients
+    
+    force_filt=bandstop(Force,wpass);
+    torque_filt=bandstop(torque,wpass);
 
     % 2) Find time points where we have reached 95% of the target force
-    [idx1,idx2]=find(Force>0.95*F_trgt); 
+%     [idx1,idx2]=find(Force>0.75*F_trgt); 
+%     [idx1,idx2]=find((Force>0.95*F_trgt) & (Force<1.05*F_trgt)); 
     
+    % 3) Analyse three different time spans in each step
+    [idx11,idx12]=find((1.95<steptime) & (steptime<10.5));
+    [idx21,idx22]=find((10.5<steptime) & (steptime<30.5));
+    [idx31,idx32]=find((100.5<steptime) & (steptime<119.5));
+%     rindx=find((vcomp(idx1)<2*adj_vel) & (position(idx1)<0));
+%     idx1(rindx)=[];
     figure % plot raw data and the chosen time point for analysis
     subplot(2,4,1)
     plot(time,Force,'--')
     hold on
-    plot(time(idx1),Force(idx1),'o')
+    plot(time,force_filt,'--k')
+    plot(time(idx11),Force(idx11),'or')
+    plot(time(idx21),Force(idx21),'ok')
+    plot(time(idx31),Force(idx31),'om')
     xlabel('time (s)')
     ylabel('force (N)')
     xlim(tt)
     subplot(2,4,2)
     plot(time,position,'--')
         hold on
-    plot(time(idx1),position(idx1),'o')
+    plot(time(idx11),position(idx11),'or')
+    plot(time(idx21),position(idx21),'ok')
+    plot(time(idx31),position(idx31),'om')
     xlabel('time (s)')
-    ylabel('position (mm)')
+    ylabel('position (µm)')
     xlim(tt)
-    d=5.2;
+    d=8.0;
     ro=d/2;
     ri=1.0;
     Reff=2/3*ro*1.0e-3;
 %     Reff=2/3*((ro*1e-3)^3-(ri*1.0e-3)^3)/((ro*1e-3)^2-(ri*1.0e-3)^2); %
 %     For annulus geometry
     mu=abs(torque)./(abs(Force)*Reff);
+    mu_filt=torque./(force_filt*Reff);
     
-    H=(visc*v*2*pi*Reff)./Force;
+    H=(visc*v*2*pi*Reff)./abs(Force);
     subplot(2,4,3)
     plot(time,torque,'--')
         hold on
-    plot(time(idx1),torque(idx1),'o')
+        plot(time,torque_filt,'--k')
+    plot(time(idx11),torque(idx11),'or')
+    plot(time(idx21),torque(idx21),'ok')
+    plot(time(idx31),torque(idx31),'om')
     xlabel('time(s)')
     ylabel('torque (Nm)')
     xlim(tt)
     subplot(2,4,4)
     plot(time,mu,'--')
     hold on
-    plot(time(idx1),mu(idx1),'o')
+    plot(time(idx11),mu(idx11),'or')
+    plot(time(idx21),mu(idx21),'ok')
+    plot(time(idx31),mu(idx31),'om')
     xlabel('time(s)')
     ylabel('COF ')
     xlim(tt)
+    ylim([0 1])
     subplot(2,4,5)
     plot(time,H,'--')
     hold on
-    plot(time(idx1),H(idx1),'o')
+    plot(time(idx11),H(idx11),'or')
+    plot(time(idx21),H(idx21),'ok')
+    plot(time(idx31),H(idx31),'om')
     xlabel('time(s)')
     ylabel('Hersey')
     xlim(tt)
     subplot(2,4,6)
     plot(time,vcomp,'--')
     hold on
-    plot(time(idx1),vcomp(idx1),'o')
+    plot(time(idx11),vcomp(idx11),'or')
+    plot(time(idx21),vcomp(idx21),'ok')
+    plot(time(idx31),vcomp(idx31),'om')
     xlabel('time(s)')
     ylabel('comp vel')
     xlim(tt)
     subplot(2,4,7)
-    plot(time(idx1),v(idx1))
+    plot(time,v)
+    hold on
+    plot(time(idx11),v(idx11),'or')
+    plot(time(idx21),v(idx21),'ok')
+    plot(time(idx31),v(idx31),'om')
+    
     xlabel('time(s)')
     ylabel('rot vel')
     xlim(tt)
-    Hersey(ii).data=H(idx1);
-    COF(ii).data=mu(idx1);
+    subplot(2,4,8)
+    loglog(H(idx11),mu(idx11),'or')
+    hold on
+    loglog(H(idx21),mu(idx21),'ok')
+    loglog(H(idx31),mu(idx31),'om')
+    xlabel('Hersey')
+    ylabel('COF')
+    
+%     stress=mean(Force(idx1))/((4.0*1e-3)^2*pi);
+%     strain=min(position(idx1)*1e-6)/thickness;
+%     Young=stress/strain;
+   
+    Hersey(ii).data=H(idx11);
+    COF(ii).data=mu(idx11);
+    sgtitle(list1(ii).name(:,1:end-4))
 end
 %% plot semilogaritmic Stribeck curves
 
